@@ -100,11 +100,26 @@ curl http://localhost:8080/health
 
 ### Dockerfile choices
 
-- **Multi-stage build:** Go compiles in the first stage, and only the binary goes into the final image. That keeps it small, which means **faster deployments and scaling, lower cost, better security and faster pipelines**.
+- **Multi-stage build:** Go compiles in the first stage, and only the binary goes into the final image. That keeps it small (79 MB instead of 2.4 GB, see [Image size](#image-size)), which means **faster deployments and scaling, lower cost, better security and faster pipelines**.
 - **Distroless:** there's no shell or package manager, just the app. There's less for an attacker to use, and Trivy found 0 critical vulnerabilities.
 - **Non-root:** the app doesn't run as root, which limits the damage if something goes wrong.
 - **`CGO_ENABLED=0`:** the binary is self-contained, which distroless needs.
 - **ARM64:** it builds natively on a Mac (which I used), and ARM Fargate is cheaper than x86.
+
+### Image size
+
+I wanted to see how much the multi-stage build actually helped, so I built the app both ways and compared them.
+
+A single-stage build keeps all the Go tools and source code in the final image, and it comes to **2.41 GB**. With the multi-stage build and a distroless base, only the finished app gets copied across, and it's **79.3 MB**. That's about **97% smaller**.
+
+| Build | Size on disk | Compressed |
+|---|---|---|
+| Single stage | 2.41 GB | 528 MB |
+| Multi-stage + distroless | 79.3 MB | 25.2 MB |
+
+A smaller image is quicker to push and pull, and there's less in it that could go wrong or be attacked.
+
+I measured the size on disk with `docker images`, and the compressed size from ECR.
 
 ## Infrastructure (Terraform)
 
